@@ -73,7 +73,11 @@ app.get("/filmes", (req, res) => {
 });
 
 app.get("/filmes/:hash", (req, res) => {
+  const t1 = performance.now();
   const filme = filmes.find((filme) => filme.hash === req.params.hash);
+  const t2 = performance.now();
+
+  console.log(`Tempo de execução: ${t2 - t1}ms`);
 
   if (!filme) {
     res.status(404).send({ erro: "Filme não encontrado" });
@@ -82,8 +86,37 @@ app.get("/filmes/:hash", (req, res) => {
   }
 });
 
-app.get("/oi", (req, res) => {
-  res.send("Oi, mundo!");
+app.put("/filmes/:hash", (req, res) => {
+  try {
+    const filme = req.body;
+    validarFilme(filme, filmes);
+
+    const index = filmes.findIndex((f) => f.hash === req.params.hash);
+
+    if (index === -1) {
+      throw new Error("Filme não encontrado");
+    }
+
+    filmes[index] = {
+      ...filme,
+      hash: criarHash(filme),
+    };
+
+    res.json(filmes);
+  } catch (error) {
+    res.status(400).send({ erro: error.message });
+  }
+});
+
+app.delete("/filmes/:hash", (req, res) => {
+  const index = filmes.findIndex((filme) => filme.hash === req.params.hash);
+
+  if (index === -1) {
+    res.status(404).send({ erro: "Filme não encontrado" });
+  } else {
+    filmes.splice(index, 1);
+    res.send(filmes);
+  }
 });
 
 app.listen(3000, () => {
