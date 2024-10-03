@@ -1,3 +1,5 @@
+[![Jest](https://github.com/Matelz/Fullstack_TTI107/actions/workflows/node.js.yml/badge.svg)](https://github.com/Matelz/Fullstack_TTI107/actions/workflows/node.js.yml)
+
 ## 💻 Projeto Fullstack com NodeJS, MongoDB e Bootstrap - **IMT (Desenvolvimento Frontend)**
 
 ### 🧑 Alunos:
