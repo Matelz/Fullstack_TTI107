@@ -1,32 +1,16 @@
+require("dotenv").config();
 const express = require("express");
 const crypto = require("crypto");
 const cors = require("cors");
+const DBHelper = require("./util/db_helper");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-let filmes = [
-  {
-    titulo: "Paris, Texas",
-    sinopse:
-      "Um homem mudo e desmemoriado é encontrado no deserto do Texas. Ele é levado para Los Angeles por seu irmão, onde tenta recuperar sua memória e seu passado.",
-    hash: "751ea72c621353703a03c3d363fde99127eff53e",
-  },
-  {
-    titulo: "Bastardos Inglórios",
-    sinopse:
-      "Durante a ocupação da França pela Alemanha nazista, um grupo de soldados judeus americanos conhecidos como Bastardos de Aldo Raine são selecionados para espalhar o medo entre os nazistas.",
-    hash: "d4145f13a0c4c0f8ca26676a25a33a4cf48ee485",
-  },
-  {
-    titulo: "Interestelar",
-    sinopse:
-      "Um grupo de exploradores faz uso de um buraco de minhoca recém-descoberto para superar as limitações de viagens espaciais humanas e conquistar as vastas distâncias envolvidas em uma viagem interestelar.",
-    hash: "18c4e50d96e30a0b3ab7538196ebcfedb0a0c66c",
-  },
-];
+const db = new DBHelper();
+db.connect();
 
 // Cria uma hash para um filme
 function criarHash(filme) {
@@ -34,9 +18,12 @@ function criarHash(filme) {
 }
 
 // Valida o filme checando sua existência e se os campos obrigatórios estão preenchidos
-function validarFilme(filme) {
+async function validarFilme(filme) {
   if (
-    filmes.find((f) => f.hash === criarHash(filme) || f.titulo === filme.titulo)
+    await db.Filme.findOne({
+      titulo: filme.titulo,
+      sinopse: filme.sinopse,
+    })
   ) {
     throw new Error("Esse filme já foi cadastrado");
   }
@@ -52,12 +39,14 @@ function validarFilme(filme) {
   return true;
 }
 
-app.get("/filmes", (req, res) => {
+app.get("/filmes", async (req, res) => {
+  let filmes = await db.Filme.find();
+
   res.send(filmes);
 });
 
-app.get("/filmes/:hash", (req, res) => {
-  const filme = filmes.find((filme) => filme.hash === req.params.hash);
+app.get("/filmes/:hash", async (req, res) => {
+  const filme = await db.Filme.findOne({ hash: req.params.hash });
 
   if (!filme) {
     res.status(404).send({ erro: "Filme não encontrado" });
@@ -66,15 +55,21 @@ app.get("/filmes/:hash", (req, res) => {
   }
 });
 
-app.post("/filmes", (req, res) => {
+app.post("/filmes", async (req, res) => {
   try {
     const filme = req.body;
-    validarFilme(filme);
+    await validarFilme(filme);
 
-    filmes.push({
-      ...filme,
+    var newFilme = new db.Filme({
       hash: criarHash(filme),
+      titulo: filme.titulo,
+      sinopse: filme.sinopse,
     });
+
+    await newFilme.save();
+
+    var filmes = await db.Filme.find();
+    console.log(filmes);
 
     res.status(201).json(filmes);
   } catch (error) {
@@ -82,21 +77,25 @@ app.post("/filmes", (req, res) => {
   }
 });
 
-app.put("/filmes/:hash", (req, res) => {
+app.put("/filmes/:hash", async (req, res) => {
   try {
     const filme = req.body;
-    validarFilme(filme);
+    await validarFilme(filme);
 
-    const index = filmes.findIndex((f) => f.hash === req.params.hash);
-
-    if (index === -1) {
-      throw new Error("Filme não encontrado");
+    if (await db.Filme.findOne({ hash: req.params.hash })) {
+      await db.Filme.updateOne(
+        { hash: req.params.hash },
+        {
+          hash: criarHash(filme),
+          titulo: filme.titulo,
+          sinopse: filme.sinopse,
+        }
+      );
+    } else {
+      res.status(404).send({ erro: "Filme não encontrado" });
     }
 
-    filmes[index] = {
-      ...filme,
-      hash: criarHash(filme),
-    };
+    var filmes = await db.Filme.find();
 
     res.status(200).json(filmes);
   } catch (error) {
@@ -104,13 +103,16 @@ app.put("/filmes/:hash", (req, res) => {
   }
 });
 
-app.delete("/filmes/:hash", (req, res) => {
-  const index = filmes.findIndex((filme) => filme.hash === req.params.hash);
+app.delete("/filmes/:hash", async (req, res) => {
+  var filme = await db.Filme.findOne({
+    hash: req.params.hash,
+  });
 
-  if (index === -1) {
+  if (!filme) {
     res.status(404).send({ erro: "Filme não encontrado" });
   } else {
-    filmes.splice(index, 1);
+    await filme.deleteOne();
+    var filmes = await db.Filme.find();
     res.send(filmes);
   }
 });
@@ -119,4 +121,4 @@ app.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
 
-(module.exports = app), filmes;
+module.exports = app;

@@ -38,6 +38,11 @@ async function cadastrarFilme() {
   let titulo = document.querySelector("#tituloInput").value;
   let sinopse = document.querySelector("#sinopseInput").value;
 
+  if (!titulo || !sinopse) {
+    displayAlert("danger", "Por favor, inclua todos os campos");
+    return;
+  }
+
   try {
     const url = `${protocolo}${base}${filmesEndpoint}`;
     const filme = await axios
